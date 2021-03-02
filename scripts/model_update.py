@@ -7,7 +7,7 @@ currentpath = os.path.dirname(os.path.realpath(__file__))
 project_basedir = os.path.join(currentpath,'..')
 sys.path.append(project_basedir)
 from matplotlib import pyplot as plt
-import random 
+import random
 import time
 from common.utils import Dataset,ProgressBar
 from tflearn.data_flow import DataFlow,DataFlowStatus,FeedDictFlow
@@ -25,7 +25,7 @@ import os, shutil
 from net.resnet import get_model
 
 
-parser = argparse.ArgumentParser(description="mcts self play script") 
+parser = argparse.ArgumentParser(description="mcts self play script")
 parser.add_argument('--gpu', '-g' , choices=[int(i) for i in list(range(8))],type=int,help="gpu core number",default=0)
 args = parser.parse_args()
 gpu_num = int(args.gpu)
@@ -43,8 +43,8 @@ if os.path.exists(data_dir):
     print('data_dir already exist: {}'.format(data_dir))
 else:
     print('creating data_dir: {}'.format(data_dir))
-    os.mkdir("{}".format(data_dir))
-    
+    os.mkdir("{}".format(data_dir)) 
+
 GPU_CORE = [gpu_num]
 BATCH_SIZE = conf.batch_size
 BEGINING_LR = conf.train_lr
@@ -61,7 +61,7 @@ for f in filelist:
     src = os.path.join(distribute_dir,f)
     dst = os.path.join(data_dir,f)
     shutil.move(src,dst)
-    
+
 filelist = [os.path.join(data_dir,i) for i in filelist]
 
 labels = common.board.create_uci_labels()
@@ -82,7 +82,7 @@ class ElePreloader(object):
         self.shuffle = shuffle
         assert(len(self.filelist) > batch_size)
         #self.game_iterlist = [None for i in self.filelist]
-    
+
     def iter(self):
         retx1,rety1,retx2,rety2 = [],[],[],[]
         vals = []
@@ -100,7 +100,7 @@ class ElePreloader(object):
                 #    self.game_iterlist[i] = convert_game_value(filelist.pop(),self.feature_list,None)
                 #    num_filepop += 1
                 #game_iter = self.game_iterlist[i]
-                
+
                 #x1,y1,val1 = game_iter.__next__()
                 for one_file in filelist:
                     try:
@@ -126,8 +126,8 @@ class ElePreloader(object):
                                 num_filepop = 0
                     except:
                         print(one_file)
-                        import traceback  
-                        traceback.print_exc()  
+                        import traceback
+                        traceback.print_exc()
                         continue
                     num_filepop += 1
                     #print(one_file)
@@ -137,10 +137,10 @@ class ElePreloader(object):
         #pass
         x1,y1,val1,num_filepop = self.batch_iter.__next__()
         return x1,y1,val1,num_filepop
-        
+
     def __len__(self):
         return len(self.filelist)
-    
+
 trainset = ElePreloader(filelist=filelist,batch_size=BATCH_SIZE)
 with tf.device("/gpu:{}".format(GPU_CORE[0])):
     coord = tf.train.Coordinator()
@@ -150,7 +150,7 @@ with tf.device("/gpu:{}".format(GPU_CORE[0])):
 trainflow.start()
 if not os.path.exists("{}/{}".format(conf.model_dir,model_name)):
     os.mkdir("{}/{}".format(conf.model_dir,model_name))
-    
+
 N_BATCH = len(trainset)
 print("train sample number: {}".format(N_BATCH))
 
@@ -160,7 +160,7 @@ print("latest network : {}".format(latest_netname))
 
 (sess,graph),((X,training),(net_softmax,value_head,train_op_multitarg,(train_op_policy,train_op_value),policy_loss,accuracy_select,global_step,value_loss,nextmove,learning_rate,score,multitarget_loss)) = \
     get_model('{}/{}'.format(conf.distributed_server_weight_dir,latest_netname),labels,GPU_CORE=GPU_CORE,FILTERS=conf.network_filters,NUM_RES_LAYERS=conf.network_layers,extrav2=True)
-    
+
 train_epoch = 1
 train_batch = 0
 
@@ -179,7 +179,7 @@ class ExpVal:
             self.val = self.exp_a * self.val + (1 - self.exp_a) * newval
     def getval(self):
         return round(self.val,2)
-    
+
 expacc_move = ExpVal()
 exploss = ExpVal()
 expsteploss = ExpVal()
@@ -196,7 +196,7 @@ for one_epoch in range(train_epoch,N_EPOCH):
     train_epoch = one_epoch
     pb = ProgressBar(worksum=N_BATCH,info=" epoch {} batch {}".format(train_epoch,train_batch))
     pb.startjob()
-    
+
     #for one_batch in range(N_BATCH):
     one_batch = 0
     while True:
@@ -205,7 +205,7 @@ for one_epoch in range(train_epoch,N_EPOCH):
         one_batch += 1
         if pb.finishsum > pb.worksum - 100: # 100 buffer
             break
-        
+
         #batch_x,batch_y,batch_v = trainflow.next()['data']
         batch_v = np.expand_dims(np.nan_to_num(batch_v),1)
         # learning rate decay strategy
@@ -219,24 +219,24 @@ for one_epoch in range(train_epoch,N_EPOCH):
             #    [train_op_value,value_loss,value_head],feed_dict={
             #        X:batch_x,learning_rate:batch_lr,training:True,score:batch_v,
             #    })
-            
-            
-            
+
+
+
             _,step_value_loss,step_val_predict,step_loss,step_acc_move,step_value,step_total_loss = sess.run(
                 [train_op_multitarg,value_loss,value_head,policy_loss,accuracy_select,global_step,multitarget_loss],feed_dict={
                     X:batch_x,learning_rate:batch_lr,training:True,score:batch_v,nextmove:batch_y,
                 })
         step_acc_move *= 100
-        
+
         expacc_move.update(step_acc_move)
         exploss.update(step_loss)
         expsteploss.update(step_value_loss)
         exptotalloss.update(step_total_loss)
 
-       
+
         pb.info = "EPOCH {} STEP {} LR {} ACC {} policy_loss {} value_loss {} total loss {}".format(
             one_epoch,one_batch,batch_lr,expacc_move.getval(),exploss.getval(),expsteploss.getval(),exptotalloss.getval())
-        
+
         pb.complete(one_finish_sum)
     print()
     with graph.as_default():

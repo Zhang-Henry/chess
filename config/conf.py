@@ -3,7 +3,7 @@ currentpath = os.path.dirname(os.path.realpath(__file__))
 project_basedir = os.path.join(currentpath, '..')
 
 distributed_datadir = os.path.join(project_basedir, 'data/distributed')
-distributed_server_weight_dir = os.path.join(
+distributed_server_weig ht_dir = os.path.join(
     project_basedir, 'data/prepare_weight')
 download_weight_dir = os.path.join(project_basedir, 'data/download_weight')
 
@@ -14,7 +14,7 @@ model_dir = os.path.join(project_basedir, 'data/models')
 imsa_cbf = os.path.join(project_basedir, 'data/imsa-cbf')
 
 port = 10088
-server = 'http://139.198.16.150'
+server = 'http://39.97.167.167'
 
 train_lr = 0.01
 train_epoch = 1
