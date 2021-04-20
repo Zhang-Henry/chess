@@ -1,0 +1,114 @@
+﻿<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+{#<base th:href="${#request.getContextPath()}+'/'">#}
+<head>
+    <meta charset="UTF-8">
+    <title>象棋模型训练实时监控</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/monitor.css') }}">
+</head>
+<body>
+<span id="bugBtn" title="同步过程出现错误数据，请检查" onclick="hideBugBtn('')"></span>
+<span id="localtime" style=" font-size:14px; position: absolute; z-index: 10; right: 25px; top:5px; "></span>
+<span class="btn btn-blue btn-big" id="refreshBtn" title="默认 1min 刷新一次">刷新</span>
+<div style="height: 620px;">
+    <header class="t_header">
+        <span>象棋模型训练实时监控</span>
+    </header>
+    <div style="margin-top: 20px;">
+        <div class="t_left_box">
+            <img class="t_l_line" src="{{ url_for('static',filename='images/left_line.png') }}" alt="">
+            <div class="t_mbox">
+                <div>最新ELO值</div>
+                <span id="todaySyncSpan">{{ elu_points[-1] | int(elu_points[-1])}}</span>
+                <i></i>
+            </div>
+            <div class="t_mbox">
+                <div>新增ELO值</div>
+                <span id="todayNoSyncSpan">{{ delta_elo[-1] | int(delta_elo[-1])}}</span>
+                <i></i>
+            </div>
+            <div class="t_mbox">
+                <div>总对局数</div>
+                <span id="syncDelaySpan">{{ game_numbers[-1] }}</span>
+                <i></i>
+            </div>
+            <div class="t_mbox">
+                <div>状态</div>
+                <span id="syncStateSpan" style="color:#00cc00">{{ row_data[-1][-1] }}</span>
+            </div>
+            <img class="t_r_line" src="{{ url_for('static',filename='images/right_line.png') }}" alt="">
+        </div>
+        <div class="t_top_box">
+            <img class="t_l_line" src="{{ url_for('static',filename='images/left_line.png') }}" alt="">
+            <ul class="t_nav">
+                <li>
+                    <span>较旧模型胜率</span>
+                    <span id="addTj">{{ (row_data[-1][-4]*100)| round(2) }}%</span>
+                    <i></i>
+                </li>
+                <li>
+                    <span>较旧模型平局率</span>
+                    <span id="updateTj">{{ (row_data[-1][-3]*100)| round(2) }}%</span>
+                    <i></i>
+                </li>
+                <li>
+                    <span>新旧模型验证局数</span>
+                    <span id="deleteTj">{{row_data[-1][-5]}}</span>
+                </li>
+            </ul>
+            <img class="t_r_line" src="{{ url_for('static',filename='images/right_line.png') }}" alt="">
+        </div>
+        <div class="t_top2_box">
+            <img class="t_l_line" src="{{ url_for('static',filename='images/left_line.png') }}" alt="">
+            <div class="t_mbox2">
+                <span style="color: #00b3ac; float: left; margin-left: 13%;">已训练：</span>
+                <span id="runTimeTj" style="float: left; margin-left: 5%;"></span>
+            </div>
+            <img class="t_r_line" src="{{ url_for('static',filename='images/right_line.png') }}" alt="">
+        </div>
+        <div class="t_bottom_box">
+            <img class="t_l_line" src="{{ url_for('static',filename='images/left_line.png') }}" alt="">
+            <div class="chart" id="taskSize" style="width: 100%; height:100%;"></div>
+            <img class="t_r_line" src="{{ url_for('static',filename='images/right_line.png') }}" alt="">
+        </div>
+        </div>
+</div>
+<div class="t_table_box">
+    <img class="t_l_line" src="{{ url_for('static',filename='images/left_line.png') }}" alt="">
+    <input type="text" id="searchText" value="" placeholder="输入内容筛选"/>
+
+<table class="commonTable">
+    <thead>
+        {% for col in column_names %}
+        <td>{{col}}</td>
+        {% endfor %}
+    </thead>
+    {% for row in row_data %}
+    <tr>
+        {% for row_ in row%}
+         <td>{{row_}}</td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+
+</table>
+    <img class="t_r_line" src="{{ url_for('static',filename='images/right_line.png') }}" alt="">
+</div>
+
+
+
+    <script>
+        var elu_points = {{ elu_points| tojson}};
+        var game_numbers = {{ game_numbers| tojson}};
+        var delta_elo = {{ delta_elo| tojson}};
+        {#var row_data = {{ row_data | tojson }};#}
+        {#console.log(row_data);#}
+    </script>
+    <script src="{{ url_for('static',filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/echarts-all.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/jquery.count.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/monitor.js') }}"></script>
+</body>
+</html>
