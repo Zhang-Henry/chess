@@ -1,17 +1,9 @@
 from gameplays import game_convert
 import sys
 import os
-import copy
-import tflearn
 import pandas as pd
-import scipy
-import time
-import random
 import tensorflow as tf
 import numpy as np
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib import pyplot as plt
 currentpath = os.path.dirname(os.path.realpath(__file__))
 project_basedir = os.path.join(currentpath, '..')
 sys.path.append(project_basedir)

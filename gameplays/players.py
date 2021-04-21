@@ -6,24 +6,15 @@ import urllib.request
 from cchess import BaseChessBoard
 from gameplays.game_convert import boardarr2netinput
 from cchess import *
-from cchess_zero import mcts
 from common import board
 import common
 from net import resnet
 from cchess_zero.gameboard import *
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-import scipy.stats
 from collections import deque, defaultdict, namedtuple
-import argparse
-import time
 import random
 import numpy as np
-import tensorflow as tf
-from cchess_zero import cbf
 from asyncio.queues import Queue
 import asyncio
-from asyncio import Future
 from config import conf
 import os
 
@@ -135,26 +126,33 @@ class NetworkPlayer(Player):
 
     def make_move(self, state, actual_move=True, human_play=False):
         assert(state.currentplayer == self.side)
-        if state.move_number < self.temp_round or (self.repeat_noise and state.maxrepeat > 1):
-            temp = 1
-        else:
-            temp = 1e-4
-        if state.move_number >= self.temp_round and self.is_selfplay == True:
-            can_apply_dnoise = True
-        else:
-            can_apply_dnoise = False
-        acts, act_probs = self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
-                                                          self.prediction_worker(self.mcts_policy)], can_apply_dnoise=can_apply_dnoise)
-        policies, score = list(zip(acts, act_probs)), self.mcts_policy._root._Q
-        score = -score
-        # 1 means going to win, -1 means going to lose
-        if score < self.surrender_threshold and self.can_surrender:
-            return None, score
+
         if human_play:
+            print(state.statestr)
             move = input("Input the move:")
+            score = None
         else:
+            if state.move_number < self.temp_round or (self.repeat_noise and state.maxrepeat > 1):
+                temp = 1
+            else:
+                temp = 1e-4
+            if state.move_number >= self.temp_round and self.is_selfplay == True:
+                can_apply_dnoise = True
+            else:
+                can_apply_dnoise = False
+            acts, act_probs = self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
+                self.prediction_worker(self.mcts_policy)], can_apply_dnoise=can_apply_dnoise)
+            policies, score = list(zip(acts, act_probs)
+                                   ), self.mcts_policy._root._Q
+            score = -score
+
+            # 1 means going to win, -1 means going to lose
+            if score < self.surrender_threshold and self.can_surrender:
+                return None, score
+
             move = self.get_random_policy(policies)
-        print("move:", move)
+            print("network move:", move)
+
         if actual_move:
             state.do_move(move)
             self.mcts_policy.update_with_move(

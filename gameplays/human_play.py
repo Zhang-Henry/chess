@@ -1,18 +1,20 @@
-import players
-import gameplay
-import tensorflow as tf
-import urllib
-from net import net_maintainer
-from config import conf
-from cchess_zero import cbf
-import random
-import numpy as np
-import time
-import common
-from net import resnet
-import os
 import sys
+sys.path.append('..')
 import argparse
+import os
+from net import resnet
+import common
+import time
+import numpy as np
+import random
+from cchess_zero import cbf
+from config import conf
+from net import net_maintainer
+import urllib
+import tensorflow as tf
+import gameplay
+import players
+
 currentpath = os.path.dirname(os.path.realpath(__file__))
 project_basedir = os.path.join(currentpath, '..')
 sys.path.append(project_basedir)
@@ -35,52 +37,34 @@ class Game(object):
                 player_name = 'w'
                 player = self.white
                 # human move
-                human_move, score = player.make_move(
+                move, score = player.make_move(
                     self.gamestate, human_play=True)
-                if human_move is None:
-                    winner = 'b' if player_name == 'w' else 'w'
-                    break
-                moves.append(human_move)
-                game_end, winner_p = self.gamestate.game_end()
-                if game_end:
-                    winner = winner_p
-                    break
-
-                remain_piece_round = gameplay.countpiece(
-                    self.gamestate.statestr)
-                if remain_piece_round < remain_piece:
-                    remain_piece = remain_piece_round
-                    peace_round = 0
-                else:
-                    peace_round += 1
-                if peace_round > conf.non_cap_draw_round:
-                    winner = 'peace'
-                    break
             else:
                 player_name = 'b'
                 player = self.black
                 # machine move
                 move, score = player.make_move(self.gamestate)
-                if move is None:
-                    winner = 'b' if player_name == 'w' else 'w'
-                    break
-                moves.append(move)
 
-                game_end, winner_p = self.gamestate.game_end()
-                if game_end:
-                    winner = winner_p
-                    break
+            if move is None:  # Surrender
+                winner = 'b' if player_name == 'w' else 'w'
+                break
+            moves.append(move)
 
-                remain_piece_round = gameplay.countpiece(
-                    self.gamestate.statestr)
-                if remain_piece_round < remain_piece:
-                    remain_piece = remain_piece_round
-                    peace_round = 0
-                else:
-                    peace_round += 1
-                if peace_round > conf.non_cap_draw_round:
-                    winner = 'peace'
-                    break
+            game_end, winner_p = self.gamestate.game_end()
+            if game_end:
+                winner = winner_p
+                break
+
+            remain_piece_round = gameplay.countpiece(
+                self.gamestate.statestr)
+            if remain_piece_round < remain_piece:
+                remain_piece = remain_piece_round
+                peace_round = 0
+            else:
+                peace_round += 1
+            if peace_round > conf.non_cap_draw_round:
+                winner = 'peace'
+                break
 
         print('winner: {}'.format(winner))
         return winner, moves
@@ -144,10 +128,6 @@ class ContinusNetworkPlayGames(object):
             self.end_of_game(cbffilename, moves, cbfile)
 
 
-class ValidationGames(ContinusNetworkPlayGames):
-    pass
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="mcts self play script")
     parser.add_argument('--verbose', '-v',
@@ -174,8 +154,6 @@ if __name__ == "__main__":
     #                        if '.index' in i and conf.noup_flag not in i])[-1]
     netnew = resnet.get_model('{}/{}'.format(conf.distributed_server_weight_dir, new_name), labels,
                               GPU_CORE=[gpu_num], FILTERS=conf.network_filters, NUM_RES_LAYERS=conf.network_layers)
-    vg = ValidationGames(network_w=netnew, network_b=netnew, white_name='oldnet',
-                         black_name='newnet', play_times=200, recoard_dir='data/validate', n_playout=400)
+    vg = ContinusNetworkPlayGames(network_w=netnew, network_b=netnew, white_name='oldnet',
+                                  black_name='newnet', play_times=200, recoard_dir='data/validate', n_playout=400)
     vg.play()
-    # cn = DistributedSelfPlayGames(network_w=network_a,network_b=network_a,distributed_server='http://10.109.247.219:10087',play_times=40,n_playout=400,auto_update=False,recoard_dir='data/validate')
-    # cn.play()
