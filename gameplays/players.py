@@ -47,6 +47,24 @@ class Player(object):
         pass
 
 
+class HumanPlayer(Player):
+    def make_move(self, state):
+        assert(state.currentplayer == self.side)
+        legal_move = GameBoard.get_legal_moves(
+            state.statestr, state.currentplayer)
+        print(state.statestr, legal_move)
+
+        while True:
+            move = input("Input the move:")
+            if move in legal_move:
+                break
+            else:
+                print("Invalid move")
+
+        state.do_move(move)
+        return move, None
+
+
 class NetworkPlayer(Player):
     def __init__(self, side, network, debugging=True, n_playout=800, search_threads=16, virtual_loss=0.02, policy_loop_arg=True, c_puct=5, dnoise=False, temp_round=conf.train_temp_round, can_surrender=False, surrender_threshold=-0.99, allow_legacy=False, repeat_noise=True, is_selfplay=False):
         super(NetworkPlayer, self).__init__(side)
@@ -124,34 +142,27 @@ class NetworkPlayer(Player):
             if tmp > randnum:
                 return val
 
-    def make_move(self, state, actual_move=True, human_play=False):
+    def make_move(self, state, actual_move=True):
         assert(state.currentplayer == self.side)
-
-        if human_play:
-            print(state.statestr)
-            move = input("Input the move:")
-            score = None
+        if state.move_number < self.temp_round or (self.repeat_noise and state.maxrepeat > 1):
+            temp = 1
         else:
-            if state.move_number < self.temp_round or (self.repeat_noise and state.maxrepeat > 1):
-                temp = 1
-            else:
-                temp = 1e-4
-            if state.move_number >= self.temp_round and self.is_selfplay == True:
-                can_apply_dnoise = True
-            else:
-                can_apply_dnoise = False
-            acts, act_probs = self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
-                self.prediction_worker(self.mcts_policy)], can_apply_dnoise=can_apply_dnoise)
-            policies, score = list(zip(acts, act_probs)
-                                   ), self.mcts_policy._root._Q
-            score = -score
+            temp = 1e-4
+        if state.move_number >= self.temp_round and self.is_selfplay == True:
+            can_apply_dnoise = True
+        else:
+            can_apply_dnoise = False
+        acts, act_probs = self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
+            self.prediction_worker(self.mcts_policy)], can_apply_dnoise=can_apply_dnoise)
+        policies, score = list(zip(acts, act_probs)
+                               ), self.mcts_policy._root._Q
+        score = -score
 
-            # 1 means going to win, -1 means going to lose
-            if score < self.surrender_threshold and self.can_surrender:
-                return None, score
+        # 1 means going to win, -1 means going to lose
+        if score < self.surrender_threshold and self.can_surrender:
+            return None, score
 
-            move = self.get_random_policy(policies)
-            print("network move:", move)
+        move = self.get_random_policy(policies)
 
         if actual_move:
             state.do_move(move)
