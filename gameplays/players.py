@@ -39,30 +39,47 @@ class Player(object):
         assert(side in ['w', 'b'])
         self.side = side
 
-    def make_move(self, state):
-        assert(state.currentplayer == self.side)
+    async def make_move(self, state):
+        raise NotImplementedError()
+
+    async def oppoent_make_move(self, move, state):
         pass
 
-    def oppoent_make_move(self, move, state):
+    async def game_end(self, state, winner_name):
         pass
 
 
 class HumanPlayer(Player):
-    def make_move(self, state):
+    def __init__(self, side):
+        super(HumanPlayer, self).__init__(side)
+        self.queue_rx = Queue(maxsize=1)
+        self.queue_tx = Queue(maxsize=1)
+
+    async def make_move(self, state):
         assert(state.currentplayer == self.side)
         legal_move = GameBoard.get_legal_moves(
             state.statestr, state.currentplayer)
-        print(state.statestr, legal_move)
 
         while True:
-            move = input("Input the move:")
+            print(state.statestr, legal_move)
+            print("Wait for human input")
+            move = await self.queue_rx.get()
             if move in legal_move:
                 break
             else:
-                print("Invalid move")
+                print("Invalid human move")
+                await self.queue_tx.put({
+                    'error': '无效操作'
+                })
 
         state.do_move(move)
         return move, None
+
+    async def oppoent_make_move(self, move, state):
+        await self.queue_tx.put({'move': move, 'state': state.statestr})
+
+    async def game_end(self, state, winner_name):
+        await self.queue_tx.put({'end': winner_name, 'state': state.statestr})
 
 
 class NetworkPlayer(Player):
@@ -142,7 +159,7 @@ class NetworkPlayer(Player):
             if tmp > randnum:
                 return val
 
-    def make_move(self, state, actual_move=True):
+    async def make_move(self, state, actual_move=True):
         assert(state.currentplayer == self.side)
         if state.move_number < self.temp_round or (self.repeat_noise and state.maxrepeat > 1):
             temp = 1
@@ -152,7 +169,7 @@ class NetworkPlayer(Player):
             can_apply_dnoise = True
         else:
             can_apply_dnoise = False
-        acts, act_probs = self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
+        acts, act_probs = await self.mcts_policy.get_move_probs(state, temp=temp, verbose=False, predict_workers=[
             self.prediction_worker(self.mcts_policy)], can_apply_dnoise=can_apply_dnoise)
         policies, score = list(zip(acts, act_probs)
                                ), self.mcts_policy._root._Q
@@ -170,14 +187,5 @@ class NetworkPlayer(Player):
                 move, allow_legacy=self.allow_legacy)
         return move, score
 
-    def oppoent_make_move(self, move, state):
-        self.mcts_policy.update_with_move(move, allow_legacy=self.allow_legacy)
-
-
-if __name__ == "__main__":
-    from gameplays import gameplay
-    network = resnet.get_model(os.path.join(
-        project_basedir, 'data/prepare_weight/2018-06-07_14-13-24'), labels, GPU_CORE=[""], FILTERS=128, NUM_RES_LAYERS=7)
-    state = gameplay.GameState()
-    player = NetworkPlayer('w', network)
-    print(player.make_move(state))
+    # async def oppoent_make_move(self, move, state):
+    #     self.mcts_policy.update_with_move(move, allow_legacy=self.allow_legacy)

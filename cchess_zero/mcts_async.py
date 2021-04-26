@@ -4,6 +4,7 @@ import numpy as np
 import copy
 from tqdm import tqdm
 
+
 def softmax(x):
     probs = np.exp(x - np.max(x))
     probs /= np.sum(probs)
@@ -16,7 +17,7 @@ class TreeNode(object):
     its visit-count-adjusted prior score u.
     """
 
-    def __init__(self, parent, prior_p,noise=False):
+    def __init__(self, parent, prior_p, noise=False):
         self._parent = parent
         self._children = {}  # a map from action to TreeNode
         self._n_visits = 0
@@ -31,14 +32,15 @@ class TreeNode(object):
         action_priors: a list of tuples of actions and their prior probability
             according to the policy function.
         """
-        # dirichlet noise should be applied when every select action 
+        # dirichlet noise should be applied when every select action
         if False and self.noise == True and self._parent == None:
-            #print("noise")
-            noise_d =  np.random.dirichlet([0.3] * len(action_priors))
-            for (action, prob),one_noise in zip(action_priors,noise_d):
+            # print("noise")
+            noise_d = np.random.dirichlet([0.3] * len(action_priors))
+            for (action, prob), one_noise in zip(action_priors, noise_d):
                 if action not in self._children:
                     prob = (1 - 0.25) * prob + 0.25 * one_noise
-                    self._children[action] = TreeNode(self, prob, noise=self.noise)
+                    self._children[action] = TreeNode(
+                        self, prob, noise=self.noise)
         else:
             for action, prob in action_priors:
                 if action not in self._children:
@@ -51,14 +53,14 @@ class TreeNode(object):
         """
         if self.noise == False:
             return max(self._children.items(),
-                   key=lambda act_node: act_node[1].get_value(c_puct))
+                       key=lambda act_node: act_node[1].get_value(c_puct))
         elif self.noise == True and self._parent != None:
             return max(self._children.items(),
-                   key=lambda act_node: act_node[1].get_value(c_puct))
+                       key=lambda act_node: act_node[1].get_value(c_puct))
         else:
-            noise_d =  np.random.dirichlet([0.3] * len(self._children))
-            return max(list(zip(noise_d,self._children.items())),
-                   key=lambda act_node: act_node[1][1].get_value(c_puct,noise_p=act_node[0]))[1]
+            noise_d = np.random.dirichlet([0.3] * len(self._children))
+            return max(list(zip(noise_d, self._children.items())),
+                       key=lambda act_node: act_node[1][1].get_value(c_puct, noise_p=act_node[0]))[1]
 
     def update(self, leaf_value):
         """Update node values from leaf evaluation.
@@ -78,7 +80,7 @@ class TreeNode(object):
             self._parent.update_recursive(-leaf_value)
         self.update(leaf_value)
 
-    def get_value(self, c_puct,noise_p=None):
+    def get_value(self, c_puct, noise_p=None):
         """Calculate and return the value for this node.
         It is a combination of leaf evaluations Q, and this node's prior
         adjusted for its visit count, u.
@@ -104,7 +106,8 @@ class TreeNode(object):
 
 class MCTS(object):
     """An implementation of Monte Carlo Tree Search."""
-    def __init__(self, policy_value_fn, c_puct=5, n_playout=10000,search_threads=32,virtual_loss=3,policy_loop_arg=False,dnoise=False,):
+
+    def __init__(self, policy_value_fn, c_puct=5, n_playout=10000, search_threads=32, virtual_loss=3, policy_loop_arg=False, dnoise=False,):
         """
         policy_value_fn: a function that takes in a board state and outputs
             a list of (action, probability) tuples and also a score in [-1, 1]
@@ -123,11 +126,11 @@ class MCTS(object):
         self.policy_loop_arg = policy_loop_arg
         self.sem = asyncio.Semaphore(search_threads)
         self.now_expanding = set()
-        
+
         self.select_time = 0
         self.policy_time = 0
         self.update_time = 0
-        
+
         self.num_proceed = 0
         self.dnoise = dnoise
 
@@ -151,7 +154,7 @@ class MCTS(object):
                 node.virtual_loss -= self.virtual_loss
                 state.do_move(action)
                 self.select_time += (time.time() - start)
-            
+
             # at leave node if long check or long catch then cut off the node
             if state.should_cutoff():
                 # cut off node
@@ -159,16 +162,15 @@ class MCTS(object):
                     one_node.virtual_loss += self.virtual_loss
                 # now at this time, we do not update the entire tree branch, the accuracy loss is supposed to be small
                 # node.update_recursive(-leaf_value)
-                
+
                 # set virtual loss to -inf so that other threads would not visit the same node again(so the node is cut off)
                 node.virtual_loss = - np.inf
-                #node.update_recursive(leaf_value)
+                # node.update_recursive(leaf_value)
                 self.update_time += (time.time() - start)
                 # however the proceed number still goes up 1
                 self.num_proceed += 1
-                return 
-                
-            
+                return
+
             start = time.time()
             self.now_expanding.add(node)
             # Evaluate the leaf using a network which outputs a list of
@@ -177,10 +179,9 @@ class MCTS(object):
             if self.policy_loop_arg == False:
                 action_probs, leaf_value = await self._policy(state)
             else:
-                action_probs, leaf_value = await self._policy(state,self.loop)
+                action_probs, leaf_value = await self._policy(state, self.loop)
             self.policy_time += (time.time() - start)
-            
-            
+
             start = time.time()
             # Check for end of game.
             end, winner = state.game_end()
@@ -200,11 +201,11 @@ class MCTS(object):
                 one_node.virtual_loss += self.virtual_loss
             node.update_recursive(-leaf_value)
             self.now_expanding.remove(node)
-            #node.update_recursive(leaf_value)
+            # node.update_recursive(leaf_value)
             self.update_time += (time.time() - start)
             self.num_proceed += 1
 
-    def get_move_probs(self, state, temp=1e-3,verbose=False,predict_workers = [],can_apply_dnoise=False):
+    async def get_move_probs(self, state, temp=1e-3, verbose=False, predict_workers=[], can_apply_dnoise=False):
         """Run all playouts sequentially and return the available actions and
         their corresponding probabilities.
         state: the current game state
@@ -217,17 +218,17 @@ class MCTS(object):
             state_copy = copy.deepcopy(state)
             coroutine_list.append(self._playout(state_copy))
         coroutine_list += predict_workers
-        self.loop.run_until_complete(asyncio.gather(*coroutine_list))
+        await asyncio.gather(*coroutine_list)
 
         # calc the move probabilities based on visit counts at the root node
         act_visits = [(act, node._n_visits)
                       for act, node in self._root._children.items()]
         acts, visits = zip(*act_visits)
-        act_probs = softmax(1.0/temp * np.log(np.array(visits) + 1e-10))
+        act_probs = softmax(1.0 / temp * np.log(np.array(visits) + 1e-10))
 
         return acts, act_probs
 
-    def update_with_move(self, last_move,allow_legacy=True):
+    def update_with_move(self, last_move, allow_legacy=True):
         """Step forward in the tree, keeping everything we already know
         about the subtree.
         """
@@ -259,7 +260,7 @@ class MCTSPlayer(object):
     def get_action(self, board, temp=1e-3, return_prob=0):
         sensible_moves = board.availables
         # the pi vector returned by MCTS as in the alphaGo Zero paper
-        move_probs = np.zeros(board.width*board.height)
+        move_probs = np.zeros(board.width * board.height)
         if len(sensible_moves) > 0:
             acts, probs = self.mcts.get_move_probs(board, temp)
             move_probs[list(acts)] = probs
@@ -268,7 +269,8 @@ class MCTSPlayer(object):
                 # self-play training)
                 move = np.random.choice(
                     acts,
-                    p=0.75*probs + 0.25*np.random.dirichlet(0.3*np.ones(len(probs)))
+                    p=0.75 * probs + 0.25 *
+                    np.random.dirichlet(0.3 * np.ones(len(probs)))
                 )
                 # update the root node and reuse the search tree
                 self.mcts.update_with_move(move)

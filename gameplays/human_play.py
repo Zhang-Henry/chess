@@ -8,6 +8,7 @@ import numpy as np
 import random
 import time
 import uuid
+import asyncio
 from config import conf
 import tensorflow as tf
 from aiohttp import web
@@ -26,7 +27,7 @@ class Game(object):
         self.verbose = verbose
         self.gamestate = gameplay.GameState()
 
-    def play_till_end(self):
+    async def play_till_end(self):
         winner = 'peace'
         moves = []
         peace_round = 0
@@ -35,11 +36,13 @@ class Game(object):
             if self.gamestate.move_number % 2 == 0:
                 player_name = 'w'
                 player = self.white
+                opponent_player = self.black
             else:
                 player_name = 'b'
                 player = self.black
+                opponent_player = self.white
 
-            move, score = player.make_move(self.gamestate)
+            move, score = await player.make_move(self.gamestate)
             print("Move", player_name, move)
 
             if move is None:  # Surrender
@@ -50,7 +53,11 @@ class Game(object):
             game_end, winner_p = self.gamestate.game_end()
             if game_end:
                 winner = winner_p
+                await player.game_end(self.gamestate, winner)
+                await opponent_player.game_end(self.gamestate, winner)
                 break
+            else:
+                await opponent_player.oppoent_make_move(move, self.gamestate)
 
             remain_piece_round = gameplay.countpiece(
                 self.gamestate.statestr)
@@ -75,18 +82,51 @@ def get_net():
                             GPU_CORE=[0], FILTERS=conf.network_filters, NUM_RES_LAYERS=conf.network_layers)
 
 
-def new_game(network):
+async def new_game(network, human):
     if random.random() < 0.5:
-        vg = Game(players.HumanPlayer('w'),
-                  players.NetworkPlayer('b', network))
+        human.side = 'w'
+        vg = Game(human, players.NetworkPlayer('b', network))
     else:
+        human.side = 'b'
         vg = Game(
-            players.NetworkPlayer('w', network), players.HumanPlayer('b'))
+            players.NetworkPlayer('w', network), human)
 
-    winner, moves = vg.play_till_end()
+    winner, moves = await vg.play_till_end()
     print(winner, moves)
 
 
+newnet = None
+
+games = {}
+routes = web.RouteTableDef()
+
+
+@routes.post("/game")
+async def handle_new_game(request):
+    global newnet, games
+    if newnet is None:
+        newnet = get_net()
+
+    game_id = str(uuid.uuid4())
+    human_player = players.HumanPlayer('w')
+    asyncio.get_event_loop().create_task(new_game(newnet, human_player))
+    games[game_id] = human_player
+    return web.json_response({'id': game_id})
+
+
+@routes.post("/game/interact")
+async def handle_move(request):
+    global games
+    data = await request.post()
+    game_id = data['uuid']
+    move = data['move']
+    player = games[game_id]
+    await player.queue_rx.put(move)
+    return web.json_response(await player.queue_tx.get())
+
 if __name__ == "__main__":
-    newnet = get_net()
-    new_game(newnet)
+    app = web.Application()
+    app.add_routes(routes)
+    web.run_app(app)
+    #
+    # new_game(newnet)
