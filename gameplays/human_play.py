@@ -113,7 +113,7 @@ async def handle_new_game(request):
     asyncio.get_event_loop().create_task(new_game(newnet, human_player))
     games[game_id] = human_player
 
-    return web.json_response(await human_player.queue_tx.get())
+    return web.json_response(await human_player.queue_tx.get(), headers={'Access-Control-Allow-Origin': '*'})
 
 
 @routes.post("/game/interact")
@@ -124,7 +124,7 @@ async def handle_move(request):
     move = data['move']
     player = games[game_id]
     await player.queue_rx.put(move)
-    return web.json_response(await player.queue_tx.get())
+    return web.json_response(await player.queue_tx.get(), headers={'Access-Control-Allow-Origin': '*'})
 
 if __name__ == "__main__":
     app = web.Application()
