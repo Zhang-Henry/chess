@@ -50,8 +50,9 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, side):
+    def __init__(self, side, game_id):
         super(HumanPlayer, self).__init__(side)
+        self.game_id = game_id
         self.queue_rx = Queue(maxsize=1)
         self.queue_tx = Queue(maxsize=1)
 
@@ -59,27 +60,38 @@ class HumanPlayer(Player):
         assert(state.currentplayer == self.side)
         legal_move = GameBoard.get_legal_moves(
             state.statestr, state.currentplayer)
+        GameBoard.print_borad(state.statestr)
 
         while True:
-            print(state.statestr, legal_move)
             print("Wait for human input")
+            await self.send_message(state, {'validMoves': legal_move})
             move = await self.queue_rx.get()
             if move in legal_move:
                 break
             else:
                 print("Invalid human move")
-                await self.queue_tx.put({
-                    'error': '无效操作'
-                })
+                await self.send_message(state, {'error': '无效操作'})
 
         state.do_move(move)
         return move, None
 
-    async def oppoent_make_move(self, move, state):
-        await self.queue_tx.put({'move': move, 'state': state.statestr})
-
     async def game_end(self, state, winner_name):
-        await self.queue_tx.put({'end': winner_name, 'state': state.statestr})
+        await self.send_message(state, {'end': winner_name, 'validMoves': []})
+
+    async def send_message(self, state, message):
+        human_side = self.side
+        if human_side == 'w':
+            net_side = 'b'
+        else:
+            net_side = 'w'
+
+        await self.queue_tx.put({
+            'id': self.game_id,
+            'state': state.statestr,
+            'humanSide': self.side,
+            'netSide': net_side,
+            **message
+        })
 
 
 class NetworkPlayer(Player):

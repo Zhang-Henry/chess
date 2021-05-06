@@ -104,14 +104,16 @@ routes = web.RouteTableDef()
 @routes.post("/game")
 async def handle_new_game(request):
     global newnet, games
+
     if newnet is None:
         newnet = get_net()
 
     game_id = str(uuid.uuid4())
-    human_player = players.HumanPlayer('w')
+    human_player = players.HumanPlayer('w', game_id)
     asyncio.get_event_loop().create_task(new_game(newnet, human_player))
     games[game_id] = human_player
-    return web.json_response({'id': game_id})
+
+    return web.json_response(await human_player.queue_tx.get())
 
 
 @routes.post("/game/interact")
@@ -127,6 +129,4 @@ async def handle_move(request):
 if __name__ == "__main__":
     app = web.Application()
     app.add_routes(routes)
-    web.run_app(app)
-    #
-    # new_game(newnet)
+    web.run_app(app, port=10080)
