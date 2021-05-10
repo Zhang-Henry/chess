@@ -83,13 +83,8 @@ def get_net():
 
 
 async def new_game(network, human):
-    if random.random() < 0.5:
-        human.side = 'w'
-        vg = Game(human, players.NetworkPlayer('b', network))
-    else:
-        human.side = 'b'
-        vg = Game(
-            players.NetworkPlayer('w', network), human)
+    vg = Game(
+        players.NetworkPlayer('w', network), human)
 
     winner, moves = await vg.play_till_end()
     print(winner, moves)
@@ -111,7 +106,7 @@ async def handle_new_game(request):
         newnet = get_net()
 
     game_id = str(uuid.uuid4())
-    human_player = players.HumanPlayer('w', game_id)
+    human_player = players.HumanPlayer('b', game_id)
     asyncio.get_event_loop().create_task(new_game(newnet, human_player))
     games[game_id] = human_player
 
