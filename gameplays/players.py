@@ -64,7 +64,7 @@ class HumanPlayer(Player):
 
         while True:
             print("Wait for human input")
-            await self.send_message(state, {'validMoves': legal_move})
+            await self.send_message(state, {'validMoves': legal_move, 'lastMove': state.lastmove})
             move = await self.queue_rx.get()
             if move in legal_move:
                 break
