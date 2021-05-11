@@ -1,3 +1,7 @@
+body {
+  background: url("/bg.jpg");
+}
+
 * {
   padding: 0;
   margin: 0;
@@ -6,7 +10,7 @@
 #MaxBox {
   width: 796.5px;
   height: 885px;
-  background-color: cornsilk;
+  background-color: rgba(255, 255, 255, 0.5);
   margin: 0 auto;
   position: relative;
   overflow: hidden;
