@@ -123,7 +123,13 @@ async def handle_move(request):
     await player.queue_rx.put(move)
     return web.json_response(await player.queue_tx.get(), headers=COMMON_HEADERS)
 
+
+@routes.get("/")
+async def handle_move(request):
+    raise web.HTTPMovedPermanently("/app/index.html")
+
 if __name__ == "__main__":
     app = web.Application()
     app.add_routes(routes)
+    app.add_routes([web.static('/app', "../chess-vue/dist", show_index=True)])
     web.run_app(app, port=10080)

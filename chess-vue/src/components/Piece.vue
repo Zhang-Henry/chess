@@ -106,21 +106,21 @@
 
 <script>
 const IMG_MAP = {
-  K: "/pieces/3.png",
-  A: "/pieces/6.png",
-  B: "/pieces/7.png",
-  N: "/pieces/4.png",
-  R: "/pieces/2.png",
-  C: "/pieces/5.png",
-  P: "/pieces/1.png",
+  K: "/app/pieces/3.png",
+  A: "/app/pieces/6.png",
+  B: "/app/pieces/7.png",
+  N: "/app/pieces/4.png",
+  R: "/app/pieces/2.png",
+  C: "/app/pieces/5.png",
+  P: "/app/pieces/1.png",
 
-  k: "/pieces/3-3.png",
-  a: "/pieces/6-6.png",
-  b: "/pieces/7-7.png",
-  n: "/pieces/4-4.png",
-  r: "/pieces/2-2.png",
-  c: "/pieces/5-5.png",
-  p: "/pieces/1-1.png",
+  k: "/app/pieces/3-3.png",
+  a: "/app/pieces/6-6.png",
+  b: "/app/pieces/7-7.png",
+  n: "/app/pieces/4-4.png",
+  r: "/app/pieces/2-2.png",
+  c: "/app/pieces/5-5.png",
+  p: "/app/pieces/1-1.png",
 };
 export default {
   data() {
@@ -150,12 +150,12 @@ export default {
       let images = [];
 
       if (this.isTarget) {
-        images.push(`url("/pieces/circle.png")`);
+        images.push(`url("/app/pieces/circle.png")`);
       }
 
       for (const coord of this.lastMoveCoords) {
         if (coord[0] === this.x && coord[1] === this.y) {
-          images.push(`url("/pieces/move_indicator.svg")`);
+          images.push(`url("/app/pieces/move_indicator.svg")`);
         }
       }
 

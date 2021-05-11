@@ -1,5 +1,5 @@
 body {
-  background: url("/bg.jpg");
+  background: url("/app/bg.jpg");
 }
 
 * {
@@ -34,19 +34,13 @@ body {
 div.chess {
   width: 92%;
   height: 92%;
-  /* border-radius: 50%; */
   position: absolute;
-  /*border: 1px black solid;*/
   margin: 4%;
   overflow: hidden;
   background-size: cover;
 }
 .chess.chess-active {
   transform: scale(0.9);
-}
-
-div.chess.circle {
-  background-image: url("/pieces/circle.png");
 }
 
 .lattice > div.chess ~ div {
