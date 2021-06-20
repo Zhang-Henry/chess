@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <h3>{{ boardStr }}</h3>
+    <h3>{{ boardStr }} <button @click="reset">重新开始</button></h3>
 
     <div id="MaxBox">
       <div v-for="y in 4" :key="y - 1" class="line">
@@ -107,6 +107,15 @@ export default {
         cxt.stroke();
       }
     },
+    reset() {
+      this.active = null;
+      this.gameId = null;
+      this.humanSide = null;
+      this.netSide = null;
+      this.boardStr = "9/9/9/9/9/9/9/9/9/9";
+      this.lastMove = "";
+      this.initGame();
+    },
     onPieceClick(x, y) {
       if (this.processing) {
         return;
@@ -146,7 +155,7 @@ export default {
     loadResponse(response) {
       if (response.data.end) {
         alert("Winner: " + response.data.end === "b" ? "黑" : "红");
-        this.initGame();
+        this.reset();
         return;
       }
       this.boardStr = response.data.state;
