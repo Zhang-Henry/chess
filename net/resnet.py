@@ -47,11 +47,17 @@ def conv_block(inputx, name, training, block_num=1, filters=2, kernel_size=(1, 1
 
 def res_net_board(inputx, name, training, filters=256, NUM_RES_LAYERS=4):
     net = inputx
+    print("net begin:")
+    print(net)
     net = tf.layers.conv2d(net, filters=filters, kernel_size=(
         3, 3), activation=None, name="{}_res_convb".format(name), padding='same')
+    print("net middle:")
+    print(net)
     net = tf.layers.batch_normalization(
         net, training=training, name="{}_res_bnb".format(name))
     net = tf.nn.elu(net, name="{}_res_elub".format(name))
+    print("net end:")
+    print(net)
     for i in range(NUM_RES_LAYERS):
         net = res_block(net, name="{}_layer_{}".format(
             name, i + 1), training=training, filters=filters)
@@ -160,6 +166,7 @@ def get_model(MODEL_NAME, labels, GPU_CORE=[0], BATCH_SIZE=512, NUM_RES_LAYERS=4
                 else:
                     devicestr = '/cpu:0'
                 with tf.device(devicestr):
+                    print(X[ind * (BATCH_SIZE // len(GPU_CORE)):(ind + 1) * (BATCH_SIZE // len(GPU_CORE))])
                     print(ind)
                     body = res_net_board(X[ind * (BATCH_SIZE // len(GPU_CORE)):(ind + 1) * (BATCH_SIZE // len(GPU_CORE))],
                                          "selectnet", training=training, filters=FILTERS, NUM_RES_LAYERS=NUM_RES_LAYERS)
